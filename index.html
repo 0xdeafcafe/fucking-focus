@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>fucking focus</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    body {
+      min-height: 100vh;
+      min-width: 100vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      position: relative;
+    }
+    #gradient-bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+    #editable-text {
+      position: relative;
+      z-index: 1;
+      color: #fff;
+      font-size: 3rem;
+      font-weight: bold;
+      text-align: center;
+      outline: none;
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.15);
+      background: rgba(0,0,0,0.05);
+      border-radius: 12px;
+      padding: 1.5rem 2.5rem;
+      min-width: 300px;
+      max-width: 90vw;
+      box-shadow: 0 4px 32px 0 rgba(0,0,0,0.08);
+      transition: background 0.2s;
+      animation: glow 4s ease-in-out infinite, noise-move 7s linear infinite;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.10));
+    }
+    #editable-text:focus {
+      background: rgba(0,0,0,0.12);
+    }
+    @keyframes glow {
+      0% {
+        filter: drop-shadow(0 0 8px rgba(255,255,255,0.10));
+      }
+      50% {
+        filter: drop-shadow(0 0 18px rgba(255,255,255,0.18));
+      }
+      100% {
+        filter: drop-shadow(0 0 8px rgba(255,255,255,0.10));
+      }
+    }
+    @keyframes noise-move {
+      0% {
+        transform: translate(0px, 0px) skewX(0deg) skewY(0deg);
+      }
+      20% {
+        transform: translate(-0.5px, 0.7px) skewX(-0.2deg) skewY(0.1deg);
+      }
+      40% {
+        transform: translate(0.8px, -0.6px) skewX(0.2deg) skewY(-0.1deg);
+      }
+      60% {
+        transform: translate(-0.6px, 0.5px) skewX(-0.1deg) skewY(0.2deg);
+      }
+      80% {
+        transform: translate(0.4px, -0.8px) skewX(0.1deg) skewY(-0.2deg);
+      }
+      100% {
+        transform: translate(0px, 0px) skewX(0deg) skewY(0deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gradient-bg"></canvas>
+  <div id="editable-text" contenteditable="true" spellcheck="false">Stay focused. Breathe. You got this.</div>
+  <script>
+    // Mesh gradient animation
+    const canvas = document.getElementById('gradient-bg');
+    const ctx = canvas.getContext('2d');
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Mesh points and colors
+    const points = [
+      { x: 0.2, y: 0.3, dx: 0.00012, dy: 0.00009, color: [255, 183, 197] }, // pink
+      { x: 0.8, y: 0.2, dx: -0.00009, dy: 0.00011, color: [186, 230, 253] }, // blue
+      { x: 0.7, y: 0.8, dx: 0.00008, dy: -0.00007, color: [167, 255, 235] }, // mint
+      { x: 0.3, y: 0.7, dx: -0.0001, dy: 0.00008, color: [255, 255, 186] }, // yellow
+      { x: 0.5, y: 0.5, dx: 0.00007, dy: -0.00009, color: [255, 214, 165] }, // peach
+    ];
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      // For each pixel, blend colors from mesh points
+      const img = ctx.createImageData(width, height);
+      for (let y = 0; y < height; y += 2) {
+        for (let x = 0; x < width; x += 2) {
+          let r = 0, g = 0, b = 0, total = 0;
+          for (const p of points) {
+            const px = p.x * width;
+            const py = p.y * height;
+            const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+            const w = 1 / (dist * 0.015 + 0.8); // smooth falloff
+            r += p.color[0] * w;
+            g += p.color[1] * w;
+            b += p.color[2] * w;
+            total += w;
+          }
+          r = Math.round(r / total);
+          g = Math.round(g / total);
+          b = Math.round(b / total);
+          for (let dy = 0; dy < 2; dy++) {
+            for (let dx = 0; dx < 2; dx++) {
+              const idx = 4 * ((y + dy) * width + (x + dx));
+              img.data[idx] = r;
+              img.data[idx + 1] = g;
+              img.data[idx + 2] = b;
+              img.data[idx + 3] = 255;
+            }
+          }
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function animate() {
+      for (const p of points) {
+        p.x += p.dx;
+        p.y += p.dy;
+        if (p.x < 0.1 || p.x > 0.9) p.dx *= -1;
+        if (p.y < 0.1 || p.y > 0.9) p.dy *= -1;
+      }
+      draw();
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // LocalStorage for editable text
+    const editable = document.getElementById('editable-text');
+    const STORAGE_KEY = 'vibe-editable-text';
+    // Load from storage
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved !== null) {
+      editable.innerText = saved;
+    }
+    // Save on input
+    editable.addEventListener('input', () => {
+      localStorage.setItem(STORAGE_KEY, editable.innerText);
+    });
+  </script>
+</body>
+</html> 
